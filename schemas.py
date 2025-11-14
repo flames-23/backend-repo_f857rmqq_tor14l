@@ -1,48 +1,61 @@
 """
-Database Schemas
+Database Schemas for On-Call Repairs & Maintenance App
 
-Define your MongoDB collection schemas here using Pydantic models.
-These schemas are used for data validation in your application.
-
-Each Pydantic model represents a collection in your database.
-Model name is converted to lowercase for the collection name:
-- User -> "user" collection
-- Product -> "product" collection
-- BlogPost -> "blogs" collection
+Each Pydantic model represents a collection in your MongoDB database.
+Collection name = lowercase of the class name (e.g., Booking -> "booking").
 """
-
+from typing import Optional, List, Literal
 from pydantic import BaseModel, Field
-from typing import Optional
+from datetime import datetime
 
-# Example schemas (replace with your own):
 
-class User(BaseModel):
-    """
-    Users collection schema
-    Collection name: "user" (lowercase of class name)
-    """
+class Customer(BaseModel):
     name: str = Field(..., description="Full name")
-    email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
-    is_active: bool = Field(True, description="Whether user is active")
+    phone: str = Field(..., description="Phone number")
+    email: Optional[str] = Field(None, description="Email address")
+    address: Optional[str] = Field(None, description="Address for home services")
+    preferred_contact: Literal["phone", "email"] = Field("phone")
 
-class Product(BaseModel):
-    """
-    Products collection schema
-    Collection name: "product" (lowercase of class name)
-    """
-    title: str = Field(..., description="Product title")
-    description: Optional[str] = Field(None, description="Product description")
-    price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
-    in_stock: bool = Field(True, description="Whether product is in stock")
 
-# Add your own schemas here:
-# --------------------------------------------------
+class Technician(BaseModel):
+    name: str
+    phone: str
+    skills: List[str] = Field(default_factory=list, description="e.g., plumbing, electrical, auto-repair")
+    lat: float = Field(0, description="Current latitude")
+    lng: float = Field(0, description="Current longitude")
+    is_available: bool = True
+    rating_avg: float = 0.0
+    rating_count: int = 0
 
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+
+class Booking(BaseModel):
+    customer_name: str
+    contact_phone: str
+    contact_email: Optional[str] = None
+    category: Literal["home", "vehicle"]
+    service_type: str = Field(..., description="Type of repair or maintenance")
+    address: Optional[str] = Field(None, description="Required for home services")
+    vehicle_info: Optional[str] = Field(None, description="Vehicle make/model if applicable")
+    scheduled_time: datetime
+    price_quote: float = Field(0, ge=0)
+    notes: Optional[str] = None
+    status: Literal[
+        "requested", "assigned", "en_route", "in_progress", "completed", "cancelled"
+    ] = "requested"
+    technician_id: Optional[str] = None
+
+
+class Review(BaseModel):
+    booking_id: str
+    technician_id: str
+    rating: int = Field(..., ge=1, le=5)
+    comment: Optional[str] = None
+
+
+class Payment(BaseModel):
+    booking_id: str
+    amount: float = Field(..., ge=0)
+    currency: Literal["usd", "eur", "gbp"] = "usd"
+    provider: Literal["mock"] = "mock"
+    status: Literal["pending", "succeeded", "failed"] = "pending"
+    transaction_id: Optional[str] = None
